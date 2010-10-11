@@ -2,7 +2,7 @@
 
 ;; Author: Hayashi Masahiro <mhayashi1120@gmail.com>
 ;; Keywords: utility regexp
-;; URL: http://github.com/mhayashi1120/Emacs-Lisp/raw/master/gather.el
+;; URL: http://github.com/mhayashi1120/Emacs-gather/raw/master/gather.el
 ;; URL: http://www.emacswiki.org/emacs/download/gather.el
 ;; Emacs: GNU Emacs 21 or later
 
