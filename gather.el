@@ -1,6 +1,6 @@
 ;;; gather.el --- Gather string in buffer.
 
-;; Author: Hayashi Masahiro <mhayashi1120@gmail.com>
+;; Author: Masahiro Hayashi <mhayashi1120@gmail.com>
 ;; Keywords: utility regexp
 ;; URL: http://github.com/mhayashi1120/Emacs-gather/raw/master/gather.el
 ;; URL: http://www.emacswiki.org/emacs/download/gather.el
