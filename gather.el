@@ -4,7 +4,7 @@
 ;; Keywords: utility regexp
 ;; URL: http://github.com/mhayashi1120/Emacs-gather/raw/master/gather.el
 ;; Emacs: GNU Emacs 21 or later
-;; Version: 1.0.0
+;; Version: 1.0.1
 
 ;; This program is free software; you can redistribute it and/or
 ;; modify it under the terms of the GNU General Public License as
@@ -24,7 +24,8 @@
 ;;; Commentary:
 
 ;; gather.el provides search regexp and kill text. This is not replacing
-;; nor modifying Emacs `kill-ring' mechanism.
+;; nor modifying Emacs `kill-ring' mechanism. You MUST know about elisp
+;; regular-expression.
 ;; Have similar concept of `occur'. If I think `occur' have line oriented 
 ;; feature, gather.el have list oriented feature. You can handle the list,
 ;; as long as you can handle Emacs-Lisp list object.
@@ -49,7 +50,6 @@
 ;;     (global-set-key "\C-xr\M-Y" 'gather-matched-insert-with-format)
 ;;     (global-set-key "\C-xrv" 'gather-matched-show)
 
-
 ;;; Usage: 
 
 ;; C-x r M-w : Kill the regexp in current-buffer.
@@ -58,6 +58,12 @@
 ;; C-x r M-Y : Insert killed text as formatted text to point.
 ;; C-x r v   : View killed text status.
 
+;; Why gather.el?
+
+;; 1. Hope to get list of function names in elisp file buffer.
+;; 2. C-x r M-w with regexp like "(defun \\(.+?\\_>\\)"
+;; 3. Now, you can paste function names by C-x r M-y with 1
+;; 4. Write a external document of functions gathered.
 
 ;;; Code:
 
@@ -68,7 +74,7 @@
 (defvar gather-matching-regexp-ring nil)
 
 (defun gather-matching-kill-save (regexp)
-  "Gather matching regexp save to `gather-killed'.
+  "Gather matching REGEXP save to `gather-killed'.
 Use \\[gather-matched-insert] or \\[gather-matched-insert-with-format] after capture.
 "
   (interactive (gather-matching-read-args "Regexp: " nil))
@@ -186,53 +192,52 @@ digit is replacing to gathered items that is captured by
       (nreverse return-list))))
 
 (defun gather-matching-regexp-ring-add (regexp)
-  (let ((ring gather-matching-regexp-ring))
-    (setq ring (delete regexp ring))
-    (setq ring (cons regexp ring))
+  (let* ((ring gather-matching-regexp-ring)
+         (ring (delete regexp ring))
+         (ring (cons regexp ring)))
     (setq gather-matching-regexp-ring ring)))
 
 (defun gather-matching-read-args (prompt erasep)
   (when erasep
     (barf-if-buffer-read-only))
-  (let (regexp)
-    (setq regexp
-	  (read-from-minibuffer prompt nil nil nil
-				'regexp-history
-				nil t))
+  (let ((regexp (read-from-minibuffer
+                 prompt nil nil nil
+                 'regexp-history
+                 nil t)))
     (list regexp)))
 
 (defun gather-matched-insert-read-args ()
   (barf-if-buffer-read-only)
-  (let ((universal-arg current-prefix-arg)
-	num subexp-max prompt-last sep)
-    (setq subexp-max 
-	  (regexp-opt-depth (car gather-matching-regexp-ring)))
-    (setq prompt-last (gather-matching-previous-as-prompt))
-    (setq num 
-	  (gather-read-number
-	   (format "%s Subexp(<= %d): "
-		   prompt-last subexp-max)
-	   0 subexp-max))
-    (when universal-arg
-      (setq sep (read-from-minibuffer "Separator: ")))
+  (gather-matching--check-regexp-ring)
+  (let* ((universal-arg current-prefix-arg)
+         (subexp-max (regexp-opt-depth (car gather-matching-regexp-ring)))
+         (prompt-last (gather-matching-previous-as-prompt))
+         (num (gather-read-number
+               (format "%s Subexp(<= %d): "
+                       prompt-last subexp-max)
+               0 subexp-max))
+         (sep (and universal-arg 
+                   (read-from-minibuffer "Separator: "))))
     (list num sep)))
 
 (defun gather-matched-insert-format-read-args ()
   (barf-if-buffer-read-only)
-  (let ((universal-arg current-prefix-arg)
-	format prompt-last sep)
-    (setq prompt-last (gather-matching-previous-as-prompt))
-    (setq format (read-from-minibuffer 
-		  (format "%s Insert format: " prompt-last)))
-    (when universal-arg
-      (setq sep (read-from-minibuffer "Separator: ")))
+  (gather-matching--check-regexp-ring)
+  (let* ((universal-arg current-prefix-arg)
+         (prompt-last (gather-matching-previous-as-prompt))
+         (format (read-from-minibuffer 
+                  (format "%s Insert format (like this): " prompt-last)
+                  "%{0}"))
+         (sep (and universal-arg (read-from-minibuffer "Separator: "))))
     (list format sep)))
 
 (defun gather-matching-previous-as-prompt ()
-  (unless gather-matching-regexp-ring
-    (error "Matched ring is empty."))
   (format "Last gatherd: %s " 
 	  (car gather-matching-regexp-ring)))
+
+(defun gather-matching--check-regexp-ring ()
+  (unless gather-matching-regexp-ring
+    (error "Matched ring is empty")))
 
 (defun gather-read-number (prompt min max)
   (let ((num nil)
