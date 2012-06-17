@@ -4,7 +4,7 @@
 ;; Keywords: utility regexp
 ;; URL: http://github.com/mhayashi1120/Emacs-gather/raw/master/gather.el
 ;; Emacs: GNU Emacs 21 or later
-;; Version: 1.0.1
+;; Version: 1.0.2
 
 ;; This program is free software; you can redistribute it and/or
 ;; modify it under the terms of the GNU General Public License as
@@ -26,7 +26,7 @@
 ;; gather.el provides search regexp and kill text. This is not replacing
 ;; nor modifying Emacs `kill-ring' mechanism. You MUST know about elisp
 ;; regular-expression.
-;; Have similar concept of `occur'. If I think `occur' have line oriented 
+;; Have similar concept of `occur'. If I think `occur' have line oriented
 ;; feature, gather.el have list oriented feature. You can handle the list,
 ;; as long as you can handle Emacs-Lisp list object.
 
@@ -50,7 +50,7 @@
 ;;     (global-set-key "\C-xr\M-Y" 'gather-matched-insert-with-format)
 ;;     (global-set-key "\C-xrv" 'gather-matched-show)
 
-;;; Usage: 
+;;; Usage:
 
 ;; C-x r M-w : Kill the regexp in current-buffer.
 ;; C-x r C-w : Kill and delete regexp in current-buffer.
@@ -73,6 +73,7 @@
 (defvar gather-killed nil)
 (defvar gather-matching-regexp-ring nil)
 
+;;;###autoload
 (defun gather-matching-kill-save (regexp)
   "Gather matching REGEXP save to `gather-killed'.
 Use \\[gather-matched-insert] or \\[gather-matched-insert-with-format] after capture.
@@ -80,13 +81,15 @@ Use \\[gather-matched-insert] or \\[gather-matched-insert-with-format] after cap
   (interactive (gather-matching-read-args "Regexp: " nil))
   (gather-matching-do-command regexp nil))
 
+;;;###autoload
 (defun gather-matching-kill (regexp)
   "Same as `gather-matching-kill-save' but delete matched strings."
   (interactive (gather-matching-read-args "Regexp: " t))
   (gather-matching-do-command regexp 'erase))
 
+;;;###autoload
 (defun gather-matched-insert (subexp &optional separator)
-  "Insert `gather-killed' that was set by 
+  "Insert `gather-killed' that was set by
 \\[gather-matching-kill-save] \\[gather-matching-kill]"
   (interactive (gather-matched-insert-read-args))
   (push-mark (point))
@@ -95,12 +98,13 @@ Use \\[gather-matched-insert] or \\[gather-matched-insert-with-format] after cap
       (mapcar
        (lambda (x)
 	 (let ((str (nth subexp x)))
-	   (when str 
+	   (when str
 	     (insert str))
 	   (insert sep)
 	   (if str t nil)))
        gather-killed))))
 
+;;;###autoload
 (defun gather-matched-insert-with-format (format &optional separator)
   "Insert gathered list with format.
 
@@ -126,12 +130,13 @@ digit is replacing to gathered items that is captured by
     (mapcar
      (lambda (x)
        (let ((str (apply 'gather-format format x)))
-	 (when str 
+	 (when str
 	   (insert str))
 	 (insert sep)
 	 (if str t nil)))
      gather-killed)))
 
+;;;###autoload
 (defun gather-matched-show ()
   (interactive)
   (let ((num (length gather-killed)))
@@ -156,13 +161,14 @@ digit is replacing to gathered items that is captured by
       (setq gather-killed (gather-matching regexp erasep))
       (gather-matched-show))))
 
+;;;###autoload
 (defun gather-matching (regexp &optional erasep no-property)
   (let ((depth (regexp-opt-depth regexp))
 	erase-subexp
 	return-list matching-func)
     (when (string-match regexp "")
       (signal 'invalid-regexp '("Regexp match to nothing.")))
-    (when erasep 
+    (when erasep
       (cond
        ((integerp erasep)
 	(when (or (> erasep depth)
@@ -171,23 +177,23 @@ digit is replacing to gathered items that is captured by
 	(setq erase-subexp erasep))
        (t
 	(setq erase-subexp 0))))
-    (setq matching-func 
+    (setq matching-func
 	  (if no-property
 	      'match-string-no-properties
 	    'match-string))
-    (save-excursion 
+    (save-excursion
       (goto-char (point-min))
       (while (re-search-forward regexp nil t)
 	(let ((i 0)
 	      (small-list nil))
 	  (while (<= i depth)
-	    (setq small-list 
+	    (setq small-list
 		  (cons (funcall matching-func i) small-list))
 	    (setq i (1+ i)))
 	  (setq small-list (nreverse small-list))
-	  (when erase-subexp 
+	  (when erase-subexp
 	    (replace-match "" erase-subexp))
-	  (setq return-list 
+	  (setq return-list
 		(cons small-list return-list))))
       (nreverse return-list))))
 
@@ -216,7 +222,7 @@ digit is replacing to gathered items that is captured by
                (format "%s Subexp(<= %d): "
                        prompt-last subexp-max)
                0 subexp-max))
-         (sep (and universal-arg 
+         (sep (and universal-arg
                    (read-from-minibuffer "Separator: "))))
     (list num sep)))
 
@@ -225,14 +231,14 @@ digit is replacing to gathered items that is captured by
   (gather-matching--check-regexp-ring)
   (let* ((universal-arg current-prefix-arg)
          (prompt-last (gather-matching-previous-as-prompt))
-         (format (read-from-minibuffer 
+         (format (read-from-minibuffer
                   (format "%s Insert format (like this): " prompt-last)
                   "%{0}"))
          (sep (and universal-arg (read-from-minibuffer "Separator: "))))
     (list format sep)))
 
 (defun gather-matching-previous-as-prompt ()
-  (format "Last gatherd: %s " 
+  (format "Last gatherd: %s "
 	  (car gather-matching-regexp-ring)))
 
 (defun gather-matching--check-regexp-ring ()
