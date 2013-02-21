@@ -1,10 +1,10 @@
 ;;; gather.el --- Gather string in buffer.
 
 ;; Author: Masahiro Hayashi <mhayashi1120@gmail.com>
-;; Keywords: utility regexp
+;; Keywords: matching, convenience
 ;; URL: http://github.com/mhayashi1120/Emacs-gather/raw/master/gather.el
 ;; Emacs: GNU Emacs 21 or later
-;; Version: 1.0.2
+;; Version: 1.0.3
 
 ;; This program is free software; you can redistribute it and/or
 ;; modify it under the terms of the GNU General Public License as
