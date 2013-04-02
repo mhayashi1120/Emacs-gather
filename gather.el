@@ -1,7 +1,7 @@
 ;;; gather.el --- Gather string in buffer.
 
 ;; Author: Masahiro Hayashi <mhayashi1120@gmail.com>
-;; Keywords: matching, convenience
+;; Keywords: matching, convenience, tools
 ;; URL: http://github.com/mhayashi1120/Emacs-gather/raw/master/gather.el
 ;; Emacs: GNU Emacs 21 or later
 ;; Version: 1.0.3
@@ -23,11 +23,11 @@
 
 ;;; Commentary:
 
-;; gather.el provides search regexp and kill text. This is not replacing
-;; nor modifying Emacs `kill-ring' mechanism. You MUST know about elisp
+;; gather.el provides search regexp and kill text.  This is not replacing
+;; nor modifying Emacs `kill-ring' mechanism.  You MUST know about elisp
 ;; regular-expression.
-;; Have similar concept of `occur'. If I think `occur' have line oriented
-;; feature, gather.el have list oriented feature. You can handle the list,
+;; Have similar concept of `occur'.  If I think `occur' have line oriented
+;; feature, gather.el have list oriented feature.  You can handle the list,
 ;; as long as you can handle Emacs-Lisp list object.
 
 ;;; Install:
@@ -63,7 +63,7 @@
 ;; 1. Hope to get list of function names in elisp file buffer.
 ;; 2. C-x r M-w with regexp like "(defun \\(.+?\\_>\\)"
 ;; 3. Now, you can paste function names by C-x r M-y with 1
-;; 4. Write a external document of functions gathered.
+;; 4. Write a external document of functions has been gathered.
 
 ;;; Code:
 
@@ -76,21 +76,21 @@
 ;;;###autoload
 (defun gather-matching-kill-save (regexp)
   "Gather matching REGEXP save to `gather-killed'.
-Use \\[gather-matched-insert] or \\[gather-matched-insert-with-format] after capture.
-"
+Use \\[gather-matched-insert] or \\[gather-matched-insert-with-format] after capture."
   (interactive (gather-matching-read-args "Regexp: " nil))
   (gather-matching-do-command regexp nil))
 
 ;;;###autoload
 (defun gather-matching-kill (regexp)
-  "Same as `gather-matching-kill-save' but delete matched strings."
+  "Gather matching REGEXP kill to `gather-killed'.
+Same as `gather-matching-kill-save' but delete matched strings."
   (interactive (gather-matching-read-args "Regexp: " t))
   (gather-matching-do-command regexp 'erase))
 
 ;;;###autoload
 (defun gather-matched-insert (subexp &optional separator)
-  "Insert `gather-killed' that was set by
-\\[gather-matching-kill-save] \\[gather-matching-kill]"
+  "Insert SUBEXP from `gather-killed'.
+That was set by \\[gather-matching-kill-save] \\[gather-matching-kill]."
   (interactive (gather-matched-insert-read-args))
   (push-mark (point))
   (let ((sep (or separator "\n")))
@@ -119,10 +119,10 @@ Then insert following text.
 \(defun B (arg) \"B\")
 
 FORMAT accept `format' function or C printf like `%' prefixed sequence.
-But succeeding char can be `digit' or `{digit}' (ex: %1, %{1}, %{10} but cannot be %10)
+But succeeding char can be `digit' or `{digit}'
+ (e.g. %1, %{1}, %{10} but cannot be %10)
 digit is replacing to gathered items that is captured by
-`gather-matching-kill-save', `gather-matching-kill'.
-"
+`gather-matching-kill-save', `gather-matching-kill'."
   (interactive (gather-matched-insert-format-read-args))
   (push-mark (point))
   (let ((sep (or separator "\n"))
@@ -138,6 +138,7 @@ digit is replacing to gathered items that is captured by
 
 ;;;###autoload
 (defun gather-matched-show ()
+  "Show gathered information."
   (interactive)
   (let ((num (length gather-killed)))
     (cond
@@ -267,7 +268,8 @@ digit is replacing to gathered items that is captured by
       (setq next-begin (match-end 0))
       (setq ret (concat ret (substring format-string search-start search-end)))
       (setq search-start next-begin)
-      (when (and (string-match "\\(?:\\([0-9]\\)\\|{\\([0-9]+\\)}\\)" format-string search-start)
+      (when (and (string-match "\\(?:\\([0-9]\\)\\|{\\([0-9]+\\)}\\)"
+                               format-string search-start)
 		 (= (match-beginning 0) search-start))
 	(setq search-start (match-end 0))
 	(setq index (string-to-number (or (match-string 1 format-string)
