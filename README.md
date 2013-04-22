@@ -23,6 +23,3 @@ as long as you can handle Emacs-Lisp list object.
 * C-x r M-y : Insert killed text to point.
 * C-x r M-Y : Insert killed text as formatted text to point.
 * C-x r v   : View killed text status.
-
-
-

@@ -4,7 +4,7 @@
 ;; Keywords: matching, convenience, tools
 ;; URL: http://github.com/mhayashi1120/Emacs-gather/raw/master/gather.el
 ;; Emacs: GNU Emacs 21 or later
-;; Version: 1.0.3
+;; Version: 1.0.4
 
 ;; This program is free software; you can redistribute it and/or
 ;; modify it under the terms of the GNU General Public License as
@@ -83,7 +83,7 @@ Use \\[gather-matched-insert] or \\[gather-matched-insert-with-format] after cap
 ;;;###autoload
 (defun gather-matching-kill (regexp)
   "Gather matching REGEXP kill to `gather-killed'.
-Same as `gather-matching-kill-save' but delete matched strings."
+Same as `gather-matching-kill-save' but with deleting the matched text."
   (interactive (gather-matching-read-args "Regexp: " t))
   (gather-matching-do-command regexp 'erase))
 
@@ -92,6 +92,7 @@ Same as `gather-matching-kill-save' but delete matched strings."
   "Insert SUBEXP from `gather-killed'.
 That was set by \\[gather-matching-kill-save] \\[gather-matching-kill]."
   (interactive (gather-matched-insert-read-args))
+  (barf-if-buffer-read-only)
   (push-mark (point))
   (let ((sep (or separator "\n")))
     (let ((inhibit-read-only t))
@@ -124,16 +125,16 @@ But succeeding char can be `digit' or `{digit}'
 digit is replacing to gathered items that is captured by
 `gather-matching-kill-save', `gather-matching-kill'."
   (interactive (gather-matched-insert-format-read-args))
+  (barf-if-buffer-read-only)
   (push-mark (point))
   (let ((sep (or separator "\n"))
 	(inhibit-read-only t))
     (mapcar
      (lambda (x)
        (let ((str (apply 'gather-format format x)))
-	 (when str
-	   (insert str))
+         (insert str)
 	 (insert sep)
-	 (if str t nil)))
+	 str))
      gather-killed)))
 
 ;;;###autoload
@@ -164,6 +165,9 @@ digit is replacing to gathered items that is captured by
 
 ;;;###autoload
 (defun gather-matching (regexp &optional erasep no-property)
+  "Gather REGEXP from current buffer.
+Optional arg ERASEP no-nil means delete gathered text.
+Optional arg NO-PROPERTY means remove any of text property."
   (let ((depth (regexp-opt-depth regexp))
 	erase-subexp
 	return-list matching-func)
@@ -258,25 +262,36 @@ digit is replacing to gathered items that is captured by
 	(end-of-file nil)))
     num))
 
+;; format special FORMAT-STRING
 (defun gather-format (format-string &rest args)
-  (let ((search-start 0)
-	(ret "")
+  (let ((start 0)
+	(ret '())
 	(escape-char "%")
-	index case-fold-search next-begin search-end)
-    (while (string-match escape-char format-string search-start)
-      (setq search-end (match-beginning 0))
-      (setq next-begin (match-end 0))
-      (setq ret (concat ret (substring format-string search-start search-end)))
-      (setq search-start next-begin)
-      (when (and (string-match "\\(?:\\([0-9]\\)\\|{\\([0-9]+\\)}\\)"
-                               format-string search-start)
-		 (= (match-beginning 0) search-start))
-	(setq search-start (match-end 0))
-	(setq index (string-to-number (or (match-string 1 format-string)
-					  (match-string 2 format-string))))
-	(setq ret (concat ret (nth index args)))))
-    (setq ret (concat ret (substring format-string search-start)))
-    ret))
+        (case-fold-search nil)
+	index next-start prev-end)
+    (while (string-match escape-char format-string start)
+      (setq prev-end (match-beginning 0))
+      (setq next-start (match-end 0))
+      (setq ret (cons (substring format-string start prev-end) ret))
+      (setq start next-start)
+      (cond
+       ((eq (string-match "\\(?:\\([0-9]\\)\\|{\\([0-9]+\\)}\\)"
+                          format-string start) start)
+        ;; indicate index of `args'
+	(setq next-start (match-end 0))
+	(setq index (string-to-number
+                     (or (match-string 1 format-string)
+                         (match-string 2 format-string))))
+	(setq ret (cons (or (nth index args) "") ret))
+        (setq start next-start))
+       ((eq (string-match escape-char format-string start) start)
+        ;; escaped escape char
+        (setq ret (cons escape-char ret))
+        (setq start (1+ start)))
+       ;; unknown escaped char is ignored
+       (t)))
+    (setq ret (cons (substring format-string start) ret))
+    (apply 'concat (nreverse ret))))
 
 (provide 'gather)
 
