@@ -94,16 +94,16 @@ That was set by \\[gather-matching-kill-save] \\[gather-matching-kill]."
   (interactive (gather-matched-insert-read-args))
   (barf-if-buffer-read-only)
   (push-mark (point))
-  (let ((sep (or separator "\n")))
-    (let ((inhibit-read-only t))
-      (mapcar
-       (lambda (x)
-	 (let ((str (nth subexp x)))
-	   (when str
-	     (insert str))
-	   (insert sep)
-	   (if str t nil)))
-       gather-killed))))
+  (let ((sep (or separator "\n"))
+        (inhibit-read-only t))
+    (mapcar
+     (lambda (x)
+       (let ((str (nth subexp x)))
+         (when str
+           (insert str))
+         (insert sep)
+         str))
+     gather-killed)))
 
 ;;;###autoload
 (defun gather-matched-insert-with-format (format &optional separator)
@@ -169,8 +169,7 @@ digit is replacing to gathered items that is captured by
 Optional arg ERASEP no-nil means delete gathered text.
 Optional arg NO-PROPERTY means remove any of text property."
   (let ((depth (regexp-opt-depth regexp))
-	erase-subexp
-	return-list matching-func)
+	subexp ret getfunc)
     (when (string-match regexp "")
       (signal 'invalid-regexp '("Regexp match to nothing.")))
     (when erasep
@@ -179,10 +178,10 @@ Optional arg NO-PROPERTY means remove any of text property."
 	(when (or (> erasep depth)
 		  (< erasep 0))
 	  (signal 'args-out-of-range '("erasep args out of ranges")))
-	(setq erase-subexp erasep))
+	(setq subexp erasep))
        (t
-	(setq erase-subexp 0))))
-    (setq matching-func
+	(setq subexp 0))))
+    (setq getfunc
 	  (if no-property
 	      'match-string-no-properties
 	    'match-string))
@@ -190,17 +189,17 @@ Optional arg NO-PROPERTY means remove any of text property."
       (goto-char (point-min))
       (while (re-search-forward regexp nil t)
 	(let ((i 0)
-	      (small-list nil))
+	      (datum nil))
 	  (while (<= i depth)
-	    (setq small-list
-		  (cons (funcall matching-func i) small-list))
+	    (setq datum
+		  (cons (funcall getfunc i) datum))
 	    (setq i (1+ i)))
-	  (setq small-list (nreverse small-list))
-	  (when erase-subexp
-	    (replace-match "" erase-subexp))
-	  (setq return-list
-		(cons small-list return-list))))
-      (nreverse return-list))))
+	  (setq datum (nreverse datum))
+	  (when subexp
+	    (replace-match "" subexp))
+	  (setq ret
+		(cons datum ret))))
+      (nreverse ret))))
 
 (defun gather-matching-regexp-ring-add (regexp)
   (let* ((ring gather-matching-regexp-ring)
