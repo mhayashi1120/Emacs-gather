@@ -4,7 +4,7 @@
 ;; Keywords: matching, convenience, tools
 ;; URL: https://github.com/mhayashi1120/Emacs-gather/raw/master/gather.el
 ;; Emacs: GNU Emacs 21 or later
-;; Version: 1.0.4
+;; Version: 1.0.5
 
 ;; This program is free software; you can redistribute it and/or
 ;; modify it under the terms of the GNU General Public License as
