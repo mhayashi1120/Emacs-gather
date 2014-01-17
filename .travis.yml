@@ -1,3 +1,8 @@
 language: emacs-lisp
+env:
+  matrix:
+    # Emacs23 have no ert?
+    - EMACS=emacs24
+    - EMACS=emacs-snapshot
 script:
   make check
