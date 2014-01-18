@@ -5,4 +5,6 @@ env:
     - EMACS=emacs24
     - EMACS=emacs-snapshot
 script:
+  uname -a
+  apt-cache search emacs
   make EMACS=${EMACS} check
