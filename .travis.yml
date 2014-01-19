@@ -1,18 +1,8 @@
 language: emacs-lisp
 env:
   matrix:
-    # Emacs23 have no ert?
-    - EMACS=emacs23
     - EMACS=emacs24
 before_install:
-  - if [ "$EMACS" = "emacs23" ]; then
-        wget "http://git.savannah.gnu.org/cgit/emacs.git/plain/lisp/emacs-lisp/ert.el" &&
-        wget "http://git.savannah.gnu.org/cgit/emacs.git/plain/lisp/emacs-lisp/cl-lib.el" &&
-        wget "http://git.savannah.gnu.org/cgit/emacs.git/plain/lisp/emacs-lisp/macroexp.el" &&
-        wget "http://git.savannah.gnu.org/cgit/emacs.git/plain/lisp/emacs-lisp/gv.el" &&
-        sudo apt-get update -q &&
-        sudo apt-get install -q emacs23;
-    fi
   - if [ "$EMACS" = "emacs24" ]; then
         sudo add-apt-repository -y ppa:cassou/emacs &&
         sudo apt-get update -q &&
