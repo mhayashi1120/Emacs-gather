@@ -4,7 +4,7 @@
 ;; Keywords: matching, convenience, tools
 ;; URL: https://github.com/mhayashi1120/Emacs-gather/raw/master/gather.el
 ;; Emacs: GNU Emacs 21 or later
-;; Version: 1.0.5
+;; Version: 1.0.6
 
 ;; This program is free software; you can redistribute it and/or
 ;; modify it under the terms of the GNU General Public License as
@@ -74,24 +74,24 @@
 (defvar gather-matching-regexp-ring nil)
 
 ;;;###autoload
-(defun gather-matching-kill-save (regexp)
+(defun gather-matching-kill-save (regexp &optional with-property)
   "Gather matching REGEXP save to `gather-killed'.
 Use \\[gather-matched-insert] or \\[gather-matched-insert-with-format] after capture."
-  (interactive (gather-matching-read-args "Regexp: " nil))
-  (gather-matching-do-command regexp nil))
+  (interactive (gather--matching-read-args "Regexp: " nil))
+  (gather--matching-do-command regexp nil with-property))
 
 ;;;###autoload
-(defun gather-matching-kill (regexp)
+(defun gather-matching-kill (regexp &optional with-property)
   "Gather matching REGEXP kill to `gather-killed'.
 Same as `gather-matching-kill-save' but with deleting the matched text."
-  (interactive (gather-matching-read-args "Regexp: " t))
-  (gather-matching-do-command regexp 'erase))
+  (interactive (gather--matching-read-args "Regexp: " t))
+  (gather--matching-do-command regexp 'erase with-property))
 
 ;;;###autoload
 (defun gather-matched-insert (subexp &optional separator)
   "Insert SUBEXP from `gather-killed'.
 That was set by \\[gather-matching-kill-save] \\[gather-matching-kill]."
-  (interactive (gather-matched-insert-read-args))
+  (interactive (gather--matched-insert-read-args))
   (barf-if-buffer-read-only)
   (push-mark (point))
   (let ((sep (or separator "\n"))
@@ -124,14 +124,14 @@ But succeeding char can be `digit' or `{digit}'
  (e.g. %1, %{1}, %{10} but cannot be %10)
 digit is replacing to gathered items that is captured by
 `gather-matching-kill-save', `gather-matching-kill'."
-  (interactive (gather-matched-insert-format-read-args))
+  (interactive (gather--matched-insert-format-read-args))
   (barf-if-buffer-read-only)
   (push-mark (point))
   (let ((sep (or separator "\n"))
 	(inhibit-read-only t))
     (mapcar
      (lambda (x)
-       (let ((str (apply 'gather-format format x)))
+       (let ((str (apply 'gather--format format x)))
          (insert str)
 	 (insert sep)
 	 str))
@@ -150,8 +150,8 @@ digit is replacing to gathered items that is captured by
      (t
       (message "Gathered %d elements." num)))))
 
-(defun gather-matching-do-command (regexp erasep)
-  (gather-matching-regexp-ring-add regexp)
+(defun gather--matching-do-command (regexp erasep with-property)
+  (gather--matching-regexp-ring-add regexp)
   (let (start end)
     (if (and transient-mark-mode mark-active)
 	(setq start (region-beginning)
@@ -160,7 +160,8 @@ digit is replacing to gathered items that is captured by
 	    end (point-max)))
     (save-restriction
       (narrow-to-region start end)
-      (setq gather-killed (gather-matching regexp erasep))
+      (setq gather-killed (gather-matching
+                           regexp erasep (not with-property)))
       (gather-matched-show))))
 
 ;;;###autoload
@@ -201,28 +202,29 @@ Optional arg NO-PROPERTY means remove any of text property."
 		(cons datum ret))))
       (nreverse ret))))
 
-(defun gather-matching-regexp-ring-add (regexp)
+(defun gather--matching-regexp-ring-add (regexp)
   (let* ((ring gather-matching-regexp-ring)
          (ring (delete regexp ring))
          (ring (cons regexp ring)))
     (setq gather-matching-regexp-ring ring)))
 
-(defun gather-matching-read-args (prompt erasep)
+(defun gather--matching-read-args (prompt erasep)
   (when erasep
     (barf-if-buffer-read-only))
   (let ((regexp (read-from-minibuffer
                  prompt nil nil nil
                  'regexp-history
-                 nil t)))
-    (list regexp)))
+                 nil t))
+        (with-property current-prefix-arg))
+    (list regexp with-property)))
 
-(defun gather-matched-insert-read-args ()
+(defun gather--matched-insert-read-args ()
   (barf-if-buffer-read-only)
-  (gather-matching--check-regexp-ring)
+  (gather--matching--check-regexp-ring)
   (let* ((universal-arg current-prefix-arg)
          (subexp-max (regexp-opt-depth (car gather-matching-regexp-ring)))
-         (prompt-last (gather-matching-previous-as-prompt))
-         (num (gather-read-number
+         (prompt-last (gather--matching-previous-as-prompt))
+         (num (gather--read-number
                (format "%s Subexp(<= %d): "
                        prompt-last subexp-max)
                0 subexp-max))
@@ -230,26 +232,26 @@ Optional arg NO-PROPERTY means remove any of text property."
                    (read-from-minibuffer "Separator: "))))
     (list num sep)))
 
-(defun gather-matched-insert-format-read-args ()
+(defun gather--matched-insert-format-read-args ()
   (barf-if-buffer-read-only)
-  (gather-matching--check-regexp-ring)
+  (gather--matching--check-regexp-ring)
   (let* ((universal-arg current-prefix-arg)
-         (prompt-last (gather-matching-previous-as-prompt))
+         (prompt-last (gather--matching-previous-as-prompt))
          (format (read-from-minibuffer
                   (format "%s Insert format (like this): " prompt-last)
                   "%{0}"))
          (sep (and universal-arg (read-from-minibuffer "Separator: "))))
     (list format sep)))
 
-(defun gather-matching-previous-as-prompt ()
+(defun gather--matching-previous-as-prompt ()
   (format "Last gatherd: %s "
 	  (car gather-matching-regexp-ring)))
 
-(defun gather-matching--check-regexp-ring ()
+(defun gather--matching--check-regexp-ring ()
   (unless gather-matching-regexp-ring
     (error "Matched ring is empty")))
 
-(defun gather-read-number (prompt min max)
+(defun gather--read-number (prompt min max)
   (let ((num nil)
 	(val ""))
     (while (or (not (numberp num))
@@ -258,11 +260,14 @@ Optional arg NO-PROPERTY means remove any of text property."
 	  (progn
 	    (setq num (read-minibuffer prompt val))
 	    (setq val (prin1-to-string num)))
-	(end-of-file nil)))
+	;; * end-of-file signal
+	;; * error signal
+	;;   Trailing garbage following expression
+	(error nil)))
     num))
 
 ;; format special FORMAT-STRING
-(defun gather-format (format-string &rest args)
+(defun gather--format (format-string &rest args)
   (let ((start 0)
 	(ret '())
 	(escape-char "%")
@@ -291,6 +296,42 @@ Optional arg NO-PROPERTY means remove any of text property."
        (t)))
     (setq ret (cons (substring format-string start) ret))
     (apply 'concat (nreverse ret))))
+
+
+;;TODO not enough tested considered
+;;TODO raw symbol
+(defun gather--format-sexp (sexp-format args)
+  (cond
+   ((consp sexp-format)
+    (let ((sexp sexp-format)
+          (res '()))
+      (while (consp sexp)
+        (setq res (cons (gather--format-sexp (car sexp) args) res))
+        (setq sexp (cdr sexp)))
+      (setq res (nreverse res))
+      (when sexp
+        (setq res (append res (gather--format-sexp sexp args))))
+      res))
+   ((and (symbolp sexp-format)
+         (string-match "\\`\\([0-9]+\\)\\'" (symbol-name sexp-format)))
+    (let* ((num (match-string 1 (symbol-name sexp-format)))
+           (idx (string-to-number num)))
+      (nth idx args)))
+   (t
+    sexp-format)))
+
+;;TODO
+(defun gather-killed-to-sexp (sexp-format)
+  "Format gathred items as SEXP-FORMAT.
+
+TODO
+"
+  (interactive)
+  (mapcar
+   (lambda (item)
+     (gather--format-sexp sexp-format item))
+   gather-killed))
+
 
 (provide 'gather)
 
