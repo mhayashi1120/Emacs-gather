@@ -151,35 +151,69 @@
 	(error nil)))
     num))
 
-(defconst gather--format-serialize-alist
-  '(
-    ("S" . gather--format-as-sexp)
-    ("s" . gather--format-as-string)
-    ("d" . gather--format-as-digit)
-    ("x" . gather--format-as-hex)
-    ("o" . gather--format-as-octal)
-    ("f" . gather--format-as-float)
-    ))
+(eval-and-compile
+  (defconst gather--format-serialize-alist
+    '(
+      ("s" . gather--format-as-literal)
+      ("S" . gather--format-as-sexp)
+      ("d" . gather--format-as-number)
+      ("x" . gather--format-as-number)
+      ("X" . gather--format-as-number)
+      ("o" . gather--format-as-number)
+      ("f" . gather--format-as-number)
+      ("Qs" . gather--format-as-single-sexp)
+      ("QS" . gather--format-as-single-string)
+      )))
 
-;;TODO reconsider it
-(defun gather--format-as-sexp (s _dummy)
-  (pp-to-string (or (and s (read s)) "")))
+(defun gather--pp (obj)
+  (with-temp-buffer
+    (let ((print-escape-newlines t)
+          (print-quoted t)
+          (print-length nil)
+          (print-level nil))
+      (prin1 obj (current-buffer)))
+    (buffer-string)))
 
-(defun gather--format-as-string (s _dummy)
-  (pp-to-string s))
+;; reconsider it
+;; as double-quoted string. newline will be '\n'
+(defun gather--format-as-single-string (s _dummy)
+  (gather--pp s))
 
-(defun gather--format-as-digit (s fmt)
-  (format (concat "%" fmt "d") (string-to-number s)))
+;; this may be failed if S is not a valid sexp
+(defun gather--format-as-single-sexp (s _dummy)
+  (let* ((sexp (and s (condition-case nil
+                          (read s)
+                        (error
+                         ;; rethrow
+                         (error "%S is not a valid sexp" s)))))
+         (string (gather--pp sexp)))
+    (cond
+     ;; chomp
+     ((string-match "[\n]\\'" string)
+      (substring string 0 -1))
+     (t
+      string))))
 
-(defun gather--format-as-hex (s fmt)
-  (format (concat "%" fmt "x") (string-to-number s)))
+(defun gather--format-as-sexp (s fmt)
+  (gather--format-internal s fmt))
 
-(defun gather--format-as-octal (s fmt)
-  (format (concat "%" fmt "o") (string-to-number s)))
+(defun gather--format-as-literal (s fmt)
+  (format (concat "%" fmt) s))
 
-(defun gather--format-as-float (s fmt)
-  (format (concat "%" fmt "f") (string-to-number s)))
+(defun gather--format-as-number (s fmt)
+  (gather--format-internal s fmt))
 
+(defun gather--format-internal (s fmt)
+  (let* ((sexp (and s (condition-case nil
+                          (read s)
+                        (error
+                         ;; rethrow
+                         (error "%S is not a valid sexp" s))))))
+    (format (concat "%" fmt) sexp)))
+
+;; <flags> ::= [+ #-0] (%d, %f, %x, %X, %o)
+;; <width> ::= [0-9]+  (%d, %f, %x, %X, %o, %s, %S)
+;; <precision> ::= [.][0-9]+ (%f)
 (defconst gather--format-extended-regexp
   (eval-when-compile
     (concat
@@ -191,17 +225,19 @@
      "\\(?:"
      ":"
      "\\("
-     "S"
+     "\\(?:[0-9]+\\)?S"
      "\\|"
-     "s"
+     "\\(?:[0-9]+\\)?s"
      "\\|"
-     "\\([0-9]+\\)?d"
+     "\\(?:\\(?:[+ #-0]\\)?\\(?:[0-9]+\\)?d\\)"
      "\\|"
-     "\\([0-9]+\\)?x"
+     "\\(?:\\(?:[+ #-0]\\)?\\(?:[0-9]+\\)?[xX]\\)"
      "\\|"
-     "\\([0-9]+\\)?o"
+     "\\(?:\\(?:[+ #-0]\\)?\\(?:[0-9]+\\)?o\\)"
      "\\|"
-     "\\(\\(?:[0-9]+\\)?\\(?:.[0-9]+\\)?\\)f"
+     "\\(?:\\(?:[+ #-0]\\)?\\(?:[0-9]+\\)?\\(?:.[0-9]+\\)?f\\)"
+     "\\|"
+     "\\(?:Q[sS]\\)"
      "\\)"
      "\\)?"
      "}"
@@ -213,7 +249,7 @@
 	(ret '())
 	(escape-char "%")
         (case-fold-search nil)
-	extend-fmt index next-start prev-end)
+	next-start prev-end)
     (while (string-match escape-char format-string start)
       (setq prev-end (match-beginning 0))
       (setq next-start (match-end 0))
@@ -224,15 +260,17 @@
                           format-string start) start)
         ;; indicate index of `args'
 	(setq next-start (match-end 0))
-	(setq index (string-to-number
-                     (or (match-string 1 format-string)
-                         (match-string 2 format-string))))
-        (setq extend-fmt (match-string 3 format-string))
-        (cond
-         (extend-fmt
-          (setq ret (cons (gather--format-extended extend-fmt (nth index args)) ret)))
-         (t
-          (setq ret (cons (or (nth index args) "") ret))))
+	(let* ((index (string-to-number
+                       (or (match-string 1 format-string)
+                           (match-string 2 format-string))))
+               (extend-fmt (match-string 3 format-string))
+               (raw (or (nth index args) "")))
+          (cond
+           (extend-fmt
+            (let ((value (gather--format-extended extend-fmt raw)))
+              (setq ret (cons value ret))))
+           (t
+            (setq ret (cons raw ret)))))
         (setq start next-start))
        ((eq (string-match escape-char format-string start) start)
         ;; escaped escape char
@@ -244,10 +282,16 @@
     (apply 'concat (nreverse ret))))
 
 (defun gather--format-extended (fmt value)
-  (let* ((key (substring fmt -1))
-         (fmt-arg (substring fmt 0 -1))
+  (let* ((suffix-re (eval-when-compile
+                      (concat
+                       (regexp-opt (mapcar 'car gather--format-serialize-alist))
+                       "\\'")))
+         (key (and (string-match suffix-re fmt)
+                   (match-string 0 fmt)))
          (formatter (cdr (assoc key gather--format-serialize-alist))))
-    (funcall formatter value fmt-arg)))
+    (if formatter
+        (funcall formatter value fmt)
+      fmt)))
 
 ;;;###autoload
 (defun gather-matching-kill-save (regexp &optional with-property)
@@ -266,6 +310,7 @@ Same as `gather-matching-kill-save' but with deleting the matched text."
 ;;;###autoload
 (defun gather-matched-insert (subexp &optional separator)
   "Insert SUBEXP from `gather-killed'.
+Each element inserted with SEPARATOR (default is newline).
 That was set by \\[gather-matching-kill-save] \\[gather-matching-kill]."
   (interactive (gather-matched--insert-read-args))
   (barf-if-buffer-read-only)
@@ -299,7 +344,32 @@ FORMAT accept `format' function or C printf like `%' prefixed sequence.
 But succeeding char can be `digit' or `{digit}'
  (e.g. %1, %{1}, %{10} but cannot be %10)
 digit is replacing to gathered items that is captured by
-`gather-matching-kill-save', `gather-matching-kill'."
+`gather-matching-kill-save', `gather-matching-kill'.
+
+Extended format:
+
+%{1:10s} expand to %5s (e.g. \"     a\" \"     b\")
+%{1:5d} expand to %05d (e.g. \"00001\" \"00002\" ) this case, gathered item
+  should be readable as number.
+
+Following extended formats are supported. Many of them are same as `format'
+ function one. Although numeric specifier is bit different behavior.
+
+S: Pass to `format' function with gathered item.
+s: Same as `S'.
+d: Same as `S' but each gathered item should be readable as number.
+x: Same as `d' but hex notation with lowcase.
+X: Same as `x' but with upcase.
+o: Same as `d' but octal notation.
+f: Same as `d' but with floating point.
+
+Example, \"\\(\\(?:\\\\\"\\|[^\"]\\)+\\)\" This regexp gather elisp string
+which may contain newline. This destroy line oriented edit. One solution,
+insert newline with escaping by `\\n'. Following directives will do it:
+Qs: `read' each gathered item and
+  format as single line s-expression.
+QS: All gathered items are formated as single line elisp string
+ with double quote."
   (interactive (gather-matched--insert-format-read-args))
   (barf-if-buffer-read-only)
   (push-mark (point))
