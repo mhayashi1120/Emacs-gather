@@ -73,83 +73,6 @@
 (defvar gather-killed nil)
 (defvar gather-matching-regexp-ring nil)
 
-;;;###autoload
-(defun gather-matching-kill-save (regexp &optional with-property)
-  "Gather matching REGEXP save to `gather-killed'.
-Use \\[gather-matched-insert] or \\[gather-matched-insert-with-format] after capture."
-  (interactive (gather-matching--read-args "Regexp: " nil))
-  (gather-matching--do-command regexp nil with-property))
-
-;;;###autoload
-(defun gather-matching-kill (regexp &optional with-property)
-  "Gather matching REGEXP kill to `gather-killed'.
-Same as `gather-matching-kill-save' but with deleting the matched text."
-  (interactive (gather-matching--read-args "Regexp: " t))
-  (gather-matching--do-command regexp 'erase with-property))
-
-;;;###autoload
-(defun gather-matched-insert (subexp &optional separator)
-  "Insert SUBEXP from `gather-killed'.
-That was set by \\[gather-matching-kill-save] \\[gather-matching-kill]."
-  (interactive (gather-matched--insert-read-args))
-  (barf-if-buffer-read-only)
-  (push-mark (point))
-  (let ((sep (or separator "\n"))
-        (inhibit-read-only t))
-    (mapcar
-     (lambda (x)
-       (let ((str (nth subexp x)))
-         (when str
-           (insert str))
-         (insert sep)
-         str))
-     gather-killed)))
-
-;;;###autoload
-(defun gather-matched-insert-with-format (format &optional separator)
-  "Insert gathered list with format.
-
-Example:
-
-Gathered list: ((\"defun A\" \"defun\" \"A\") (\"defun B\" \"defun\" \"B\"))
-Format: \"(%1 %2 (arg) \"%2\")\"
-
-Then insert following text.
-
-\(defun A (arg) \"A\")
-\(defun B (arg) \"B\")
-
-FORMAT accept `format' function or C printf like `%' prefixed sequence.
-But succeeding char can be `digit' or `{digit}'
- (e.g. %1, %{1}, %{10} but cannot be %10)
-digit is replacing to gathered items that is captured by
-`gather-matching-kill-save', `gather-matching-kill'."
-  (interactive (gather-matched--insert-format-read-args))
-  (barf-if-buffer-read-only)
-  (push-mark (point))
-  (let ((sep (or separator "\n"))
-	(inhibit-read-only t))
-    (mapcar
-     (lambda (x)
-       (let ((str (apply 'gather--format format x)))
-         (insert str)
-	 (insert sep)
-	 str))
-     gather-killed)))
-
-;;;###autoload
-(defun gather-matched-show ()
-  "Show gathered information."
-  (interactive)
-  (let ((num (length gather-killed)))
-    (cond
-     ((= num 0)
-      (message "Nothing is gathered."))
-     ((= num 1)
-      (message "Gathered a element."))
-     (t
-      (message "Gathered %d elements." num)))))
-
 (defun gather-matching--do-command (regexp erasep with-property)
   (gather-matching--regexp-ring-add regexp)
   (let (start end)
@@ -163,44 +86,6 @@ digit is replacing to gathered items that is captured by
       (setq gather-killed (gather-matching
                            regexp erasep (not with-property)))
       (gather-matched-show))))
-
-;;;###autoload
-(defun gather-matching (regexp &optional erasep no-property)
-  "Gather REGEXP from current buffer.
-Optional arg ERASEP no-nil means delete gathered text.
-Optional arg NO-PROPERTY means remove any of text property."
-  (let ((depth (regexp-opt-depth regexp))
-	subexp ret getfunc)
-    (when (string-match regexp "")
-      (signal 'invalid-regexp '("Regexp match to nothing.")))
-    (when erasep
-      (cond
-       ((integerp erasep)
-	(when (or (> erasep depth)
-		  (< erasep 0))
-	  (signal 'args-out-of-range '("erasep args out of ranges")))
-	(setq subexp erasep))
-       (t
-	(setq subexp 0))))
-    (setq getfunc
-	  (if no-property
-	      'match-string-no-properties
-	    'match-string))
-    (save-excursion
-      (goto-char (point-min))
-      (while (re-search-forward regexp nil t)
-	(let ((i 0)
-	      (datum nil))
-	  (while (<= i depth)
-	    (setq datum
-		  (cons (funcall getfunc i) datum))
-	    (setq i (1+ i)))
-	  (setq datum (nreverse datum))
-	  (when subexp
-	    (replace-match "" subexp))
-	  (setq ret
-		(cons datum ret))))
-      (nreverse ret))))
 
 (defun gather-matching--regexp-ring-add (regexp)
   (let* ((ring gather-matching-regexp-ring)
@@ -364,7 +249,120 @@ Optional arg NO-PROPERTY means remove any of text property."
          (formatter (cdr (assoc key gather--format-serialize-alist))))
     (funcall formatter value fmt-arg)))
 
-;;TODO pull down autoload
+;;;###autoload
+(defun gather-matching-kill-save (regexp &optional with-property)
+  "Gather matching REGEXP save to `gather-killed'.
+Use \\[gather-matched-insert] or \\[gather-matched-insert-with-format] after capture."
+  (interactive (gather-matching--read-args "Regexp: " nil))
+  (gather-matching--do-command regexp nil with-property))
+
+;;;###autoload
+(defun gather-matching-kill (regexp &optional with-property)
+  "Gather matching REGEXP kill to `gather-killed'.
+Same as `gather-matching-kill-save' but with deleting the matched text."
+  (interactive (gather-matching--read-args "Regexp: " t))
+  (gather-matching--do-command regexp 'erase with-property))
+
+;;;###autoload
+(defun gather-matched-insert (subexp &optional separator)
+  "Insert SUBEXP from `gather-killed'.
+That was set by \\[gather-matching-kill-save] \\[gather-matching-kill]."
+  (interactive (gather-matched--insert-read-args))
+  (barf-if-buffer-read-only)
+  (push-mark (point))
+  (let ((sep (or separator "\n"))
+        (inhibit-read-only t))
+    (mapcar
+     (lambda (x)
+       (let ((str (nth subexp x)))
+         (when str
+           (insert str))
+         (insert sep)
+         str))
+     gather-killed)))
+
+;;;###autoload
+(defun gather-matched-insert-with-format (format &optional separator)
+  "Insert gathered list with format.
+
+Example:
+
+Gathered list: ((\"defun A\" \"defun\" \"A\") (\"defun B\" \"defun\" \"B\"))
+Format: \"(%1 %2 (arg) \"%2\")\"
+
+Then insert following text.
+
+\(defun A (arg) \"A\")
+\(defun B (arg) \"B\")
+
+FORMAT accept `format' function or C printf like `%' prefixed sequence.
+But succeeding char can be `digit' or `{digit}'
+ (e.g. %1, %{1}, %{10} but cannot be %10)
+digit is replacing to gathered items that is captured by
+`gather-matching-kill-save', `gather-matching-kill'."
+  (interactive (gather-matched--insert-format-read-args))
+  (barf-if-buffer-read-only)
+  (push-mark (point))
+  (let ((sep (or separator "\n"))
+	(inhibit-read-only t))
+    (mapcar
+     (lambda (x)
+       (let ((str (apply 'gather--format format x)))
+         (insert str)
+	 (insert sep)
+	 str))
+     gather-killed)))
+
+;;;###autoload
+(defun gather-matched-show ()
+  "Show gathered information."
+  (interactive)
+  (let ((num (length gather-killed)))
+    (cond
+     ((= num 0)
+      (message "Nothing is gathered."))
+     ((= num 1)
+      (message "Gathered a element."))
+     (t
+      (message "Gathered %d elements." num)))))
+
+;;;###autoload
+(defun gather-matching (regexp &optional erasep no-property)
+  "Gather REGEXP from current buffer.
+Optional arg ERASEP no-nil means delete gathered text.
+Optional arg NO-PROPERTY means remove any of text property."
+  (let ((depth (regexp-opt-depth regexp))
+	subexp ret getfunc)
+    (when (string-match regexp "")
+      (signal 'invalid-regexp '("Regexp match to nothing.")))
+    (when erasep
+      (cond
+       ((integerp erasep)
+	(when (or (> erasep depth)
+		  (< erasep 0))
+	  (signal 'args-out-of-range '("erasep args out of ranges")))
+	(setq subexp erasep))
+       (t
+	(setq subexp 0))))
+    (setq getfunc
+	  (if no-property
+	      'match-string-no-properties
+	    'match-string))
+    (save-excursion
+      (goto-char (point-min))
+      (while (re-search-forward regexp nil t)
+	(let ((i 0)
+	      (datum nil))
+	  (while (<= i depth)
+	    (setq datum
+		  (cons (funcall getfunc i) datum))
+	    (setq i (1+ i)))
+	  (setq datum (nreverse datum))
+	  (when subexp
+	    (replace-match "" subexp))
+	  (setq ret
+		(cons datum ret))))
+      (nreverse ret))))
 
 (provide 'gather)
 
