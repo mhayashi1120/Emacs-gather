@@ -4,7 +4,7 @@
 ;; Keywords: matching, convenience, tools
 ;; URL: https://github.com/mhayashi1120/Emacs-gather/raw/master/gather.el
 ;; Emacs: GNU Emacs 21 or later
-;; Version: 1.1.0
+;; Version: 1.1.1
 
 ;; This program is free software; you can redistribute it and/or
 ;; modify it under the terms of the GNU General Public License as
@@ -30,7 +30,7 @@
 ;; feature, gather.el have list oriented feature.  You can handle the list,
 ;; as long as you can handle Emacs-Lisp list object.
 
-;;; Install:
+;; ## Install:
 
 ;; Put this file into load-path'ed directory, and byte compile it if
 ;; desired. And put the following expression into your ~/.emacs.
@@ -50,13 +50,13 @@
 ;;     (global-set-key "\C-xr\M-Y" 'gather-matched-insert-with-format)
 ;;     (global-set-key "\C-xrv" 'gather-matched-show)
 
-;;; Usage:
+;; ## Usage:
 
-;; C-x r M-w : Kill the regexp in current-buffer.
-;; C-x r C-w : Kill and delete regexp in current-buffer.
-;; C-x r M-y : Insert killed text to point.
-;; C-x r M-Y : Insert killed text as formatted text to point.
-;; C-x r v   : View killed text status.
+;; `C-x r M-w` : Kill the regexp in current-buffer.
+;; `C-x r C-w` : Kill and delete regexp in current-buffer.
+;; `C-x r M-y` : Insert killed text to point.
+;; `C-x r M-Y` : Insert killed text as formatted text to point.
+;; `C-x r v`   : View killed text status.
 
 ;; Why gather.el?
 
