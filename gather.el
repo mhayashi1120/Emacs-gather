@@ -2,7 +2,7 @@
 
 ;; Author: Masahiro Hayashi <mhayashi1120@gmail.com>
 ;; Keywords: matching, convenience, tools
-;; URL: https://github.com/mhayashi1120/Emacs-gather/raw/master/gather.el
+;; URL: https://github.com/mhayashi1120/Emacs-gather
 ;; Emacs: GNU Emacs 21 or later
 ;; Version: 1.1.1
 
