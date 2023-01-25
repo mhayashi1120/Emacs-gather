@@ -3,8 +3,8 @@
 ;; Author: Masahiro Hayashi <mhayashi1120@gmail.com>
 ;; Keywords: matching, convenience, tools
 ;; URL: https://github.com/mhayashi1120/Emacs-gather
-;; Emacs: GNU Emacs 21 or later
-;; Version: 1.1.1
+;; Emacs: GNU Emacs 23 or later
+;; Version: 1.2.0
 
 ;; This program is free software; you can redistribute it and/or
 ;; modify it under the terms of the GNU General Public License as
@@ -41,14 +41,7 @@
 ;;     (define-key ctl-x-r-map "\M-y" 'gather-matched-insert)
 ;;     (define-key ctl-x-r-map "\M-Y" 'gather-matched-insert-with-format)
 ;;     (define-key ctl-x-r-map "v" 'gather-matched-show)
-
-;; ********** Emacs 22 or earlier **********
-;;     (require 'gather)
-;;     (global-set-key "\C-xr\M-w" 'gather-matching-kill-save)
-;;     (global-set-key "\C-xr\C-w" 'gather-matching-kill)
-;;     (global-set-key "\C-xr\M-y" 'gather-matched-insert)
-;;     (global-set-key "\C-xr\M-Y" 'gather-matched-insert-with-format)
-;;     (global-set-key "\C-xrv" 'gather-matched-show)
+;;     (define-key ctl-x-r-map "L" 'gather-matching-line-save)
 
 ;; ## Usage:
 
@@ -57,6 +50,7 @@
 ;; `C-x r M-y` : Insert killed text to point.
 ;; `C-x r M-Y` : Insert killed text as formatted text to point.
 ;; `C-x r v`   : View killed text status.
+;; `C-x r L`   : Kill the lines matching to regexp in current-buffer.
 
 ;; Why gather.el?
 
@@ -295,23 +289,31 @@
 
 ;;;###autoload
 (defun gather-matching-kill-save (regexp &optional with-property)
-  "Gather matching REGEXP save to `gather-killed'.
+  "Gather matching REGEXP be saved to `gather-killed'.
 Use \\[gather-matched-insert] or \\[gather-matched-insert-with-format] after capture."
   (interactive (gather-matching--read-args "Regexp: " nil))
   (gather-matching--do-command regexp nil with-property))
 
 ;;;###autoload
 (defun gather-matching-kill (regexp &optional with-property)
-  "Gather matching REGEXP kill to `gather-killed'.
+  "Gather matching REGEXP be killed to `gather-killed'.
 Same as `gather-matching-kill-save' but with deleting the matched text."
   (interactive (gather-matching--read-args "Regexp: " t))
   (gather-matching--do-command regexp 'erase with-property))
 
 ;;;###autoload
+(defun gather-matching-line-save (regexp &optional with-property)
+  "Gather matching line to REGEXP save to `gather-killed'."
+  (interactive (gather-matching--read-args "Regexp: " nil))
+  (let ((re (format "^.*%s.*$" regexp)))
+    (gather-matching--do-command re nil with-property)))
+
+;;;###autoload
 (defun gather-matched-insert (subexp &optional separator)
   "Insert SUBEXP from `gather-killed'.
 Each element inserted with SEPARATOR (default is newline).
-That was set by \\[gather-matching-kill-save] \\[gather-matching-kill]."
+That was set by \\[gather-matching-kill-save] \\[gather-matching-kill]
+\\[gather-matching-line-save]."
   (interactive (gather-matched--insert-read-args))
   (barf-if-buffer-read-only)
   (push-mark (point))
