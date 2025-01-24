@@ -136,7 +136,7 @@
 	      (val ""))
     (while (or (not (numberp num))
 	             (not (and (<= min num) (<= num max))))
-      (condition-case err
+      (condition-case nil
 	        (progn
 	          (setq num (read-minibuffer prompt val))
 	          (setq val (prin1-to-string num)))
