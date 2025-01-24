@@ -72,10 +72,10 @@
   (gather-matching--regexp-ring-add regexp)
   (let (start end)
     (if (and transient-mark-mode mark-active)
-	(setq start (region-beginning)
-	      end (region-end))
+	      (setq start (region-beginning)
+	            end (region-end))
       (setq start (point-min)
-	    end (point-max)))
+	          end (point-max)))
     (save-restriction
       (narrow-to-region start end)
       (setq gather-killed (gather-matching
@@ -125,7 +125,7 @@
 
 (defun gather-matched--previous-as-prompt ()
   (format "Last gatherd: %s "
-	  (car gather-matching-regexp-ring)))
+	        (car gather-matching-regexp-ring)))
 
 (defun gather-matched--check-regexp-ring ()
   (unless gather-matching-regexp-ring
@@ -133,17 +133,17 @@
 
 (defun gather--read-number (prompt min max)
   (let ((num nil)
-	(val ""))
+	      (val ""))
     (while (or (not (numberp num))
-	       (not (and (<= min num) (<= num max))))
+	             (not (and (<= min num) (<= num max))))
       (condition-case err
-	  (progn
-	    (setq num (read-minibuffer prompt val))
-	    (setq val (prin1-to-string num)))
-	;; * end-of-file signal
-	;; * error signal
-	;;   Trailing garbage following expression
-	(error nil)))
+	        (progn
+	          (setq num (read-minibuffer prompt val))
+	          (setq val (prin1-to-string num)))
+	      ;; * end-of-file signal
+	      ;; * error signal
+	      ;;   Trailing garbage following expression
+	      (error nil)))
     num))
 
 (eval-and-compile
@@ -240,10 +240,10 @@
 ;; format special FORMAT-STRING
 (defun gather--format (format-string &rest args)
   (let ((start 0)
-	(ret '())
-	(escape-char "%")
+	      (ret '())
+	      (escape-char "%")
         (case-fold-search nil)
-	next-start prev-end)
+	      next-start prev-end)
     (while (string-match escape-char format-string start)
       (setq prev-end (match-beginning 0))
       (setq next-start (match-end 0))
@@ -253,8 +253,8 @@
        ((eq (string-match gather--format-extended-regexp
                           format-string start) start)
         ;; indicate index of `args'
-	(setq next-start (match-end 0))
-	(let* ((index (string-to-number
+	      (setq next-start (match-end 0))
+	      (let* ((index (string-to-number
                        (or (match-string 1 format-string)
                            (match-string 2 format-string))))
                (extend-fmt (match-string 3 format-string))
@@ -376,13 +376,13 @@ QS: All gathered items are formated as single line elisp string
   (barf-if-buffer-read-only)
   (push-mark (point))
   (let ((sep (or separator "\n"))
-	(inhibit-read-only t))
+	      (inhibit-read-only t))
     (mapcar
      (lambda (x)
        (let ((str (apply 'gather--format format x)))
          (insert str)
-	 (insert sep)
-	 str))
+	       (insert sep)
+	       str))
      gather-killed)))
 
 ;;;###autoload
@@ -404,36 +404,36 @@ QS: All gathered items are formated as single line elisp string
 Optional arg ERASEP no-nil means delete gathered text.
 Optional arg NO-PROPERTY means remove any of text property."
   (let ((depth (regexp-opt-depth regexp))
-	subexp ret getfunc)
+	      subexp ret getfunc)
     (when (string-match regexp "")
       (signal 'invalid-regexp '("Regexp match to nothing.")))
     (when erasep
       (cond
        ((integerp erasep)
-	(when (or (> erasep depth)
-		  (< erasep 0))
-	  (signal 'args-out-of-range '("erasep args out of ranges")))
-	(setq subexp erasep))
+	      (when (or (> erasep depth)
+		              (< erasep 0))
+	        (signal 'args-out-of-range '("erasep args out of ranges")))
+	      (setq subexp erasep))
        (t
-	(setq subexp 0))))
+	      (setq subexp 0))))
     (setq getfunc
-	  (if no-property
-	      'match-string-no-properties
-	    'match-string))
+	        (if no-property
+	            'match-string-no-properties
+	          'match-string))
     (save-excursion
       (goto-char (point-min))
       (while (re-search-forward regexp nil t)
-	(let ((i 0)
-	      (datum nil))
-	  (while (<= i depth)
-	    (setq datum
-		  (cons (funcall getfunc i) datum))
-	    (setq i (1+ i)))
-	  (setq datum (nreverse datum))
-	  (when subexp
-	    (replace-match "" subexp))
-	  (setq ret
-		(cons datum ret))))
+	      (let ((i 0)
+	            (datum nil))
+	        (while (<= i depth)
+	          (setq datum
+		              (cons (funcall getfunc i) datum))
+	          (setq i (1+ i)))
+	        (setq datum (nreverse datum))
+	        (when subexp
+	          (replace-match "" subexp))
+	        (setq ret
+		            (cons datum ret))))
       (nreverse ret))))
 
 (provide 'gather)
