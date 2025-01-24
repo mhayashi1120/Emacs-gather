@@ -1,10 +1,11 @@
-;;; gather.el --- Gather string in buffer.
+;;; gather.el --- Gather string in buffer -*- lexical-binding: t -*-
 
 ;; Author: Masahiro Hayashi <mhayashi1120@gmail.com>
 ;; Keywords: matching, convenience, tools
 ;; URL: https://github.com/mhayashi1120/Emacs-gather
-;; Emacs: GNU Emacs 23 or later
-;; Version: 1.2.0
+;; Emacs: GNU Emacs 24 or later
+;; Package-Requires: ((emacs "24.3"))
+;; Version: 1.3.0
 
 ;; This program is free software; you can redistribute it and/or
 ;; modify it under the terms of the GNU General Public License as
@@ -156,8 +157,7 @@
       ("o" . gather--format-as-number)
       ("f" . gather--format-as-number)
       ("Qs" . gather--format-as-single-sexp)
-      ("QS" . gather--format-as-single-string)
-      )))
+      ("QS" . gather--format-as-single-string))))
 
 (defun gather--pp (obj)
   (with-temp-buffer
